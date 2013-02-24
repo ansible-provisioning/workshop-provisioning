@@ -1,0 +1,38 @@
+---
+
+- name: Install a minimal CentOS
+  hosts: guests
+
+  ### Can't gather facts from a machine that does not exist
+  gather_facts: false
+
+  vars:
+    host: firefly
+    host_ip: 192.168.122.1
+    storage: firefly
+    iso_image: /home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
+    kernel: /home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
+    initrd: /home/jeroen/downloads/os/pxe/centos-6.3/initrd.img
+    kickstart_path: /home/jeroen/dev/ansible/workshop/ks
+
+  tasks:
+### Create a logical volume for storage
+  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
+    delegate_to: ${host}
+
+### Create a virtual machine
+  - action: file dest=/tmp/vm-${inventory_hostname} state=directory
+    delegate_to: ${host}
+  - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+  - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+
+### Prepare a kickstart file
+  - action: file dest=${kickstart_path} state=directory
+  - action: template src=../templates/centos-6.ks dest=${kickstart_path}/${inventory_hostname}.ks
+    delegate_to: ${host}
+
+### Boot the VM using the ISO image
+  - action: virt_boot guest=${inventory_hostname} kernel=${kernel} initrd=${initrd} cmdline="linux  ks=http://${host_ip}:8000/${inventory_hostname}.ks"
+    delegate_to: ${host}
