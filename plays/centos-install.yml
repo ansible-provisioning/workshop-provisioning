@@ -40,10 +40,10 @@
 
 ### Wait for kickstart to finish
   - action: wait_for host=${ip} port=22 state=started
-    delegate_to: ${host}
+    delegate_to: ${command_host}
 
   - action: wait_for host=${ip} port=22 state=stopped timeout=3600
-    delegate_to: ${host}
+    delegate_to: ${command_host}
 
   - local_action: pause seconds=60
 
@@ -61,10 +61,11 @@
     - post_install
 
   - action: wait_for host=${ip} port=22 state=started
-    delegate_to: ${host}
+    delegate_to: ${command_host}
     tags:
     - post_install
 
-  - local_action: lineinfile dest=/etc/hosts regexp=" ${inventory_hostname}$" line="${ip} ${inventory_hostname}"
+  - action: lineinfile dest=/etc/hosts regexp=" ${inventory_hostname}$" line="${ip} ${inventory_hostname}"
+    delegate_to: ${command_host}
     tags:
     - post_install

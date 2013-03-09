@@ -5,6 +5,7 @@ firefly ansible_python_interpreter=/usr/bin/python2
 ws01 ip=192.168.122.21
 
 [guests:vars]
+command_host=firefly
 host=firefly
 host_ip=192.168.122.1
 storage=firefly
