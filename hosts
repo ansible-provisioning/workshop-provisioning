@@ -2,4 +2,14 @@
 firefly ansible_python_interpreter=/usr/bin/python2
 
 [guests]
-ws01
+ws01 ip=192.168.122.21
+
+[guests:vars]
+host=firefly
+host_ip=192.168.122.1
+storage=firefly
+iso_image=/home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
+kernel=/home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
+initrd=/home/jeroen/downloads/os/pxe/centos-6.3/initrd.img
+kickstart_path=/home/jeroen/dev/ansible/workshop/ks
+kickstart_http=192.168.122.1:8000

@@ -1,19 +1,10 @@
 ---
 
-- name: Install a minimal CentOS
+- name: Create a Virtual Machine
   hosts: guests
 
   ### Can't gather facts from a machine that does not exist
   gather_facts: false
-
-  vars:
-    host: firefly
-    host_ip: 192.168.122.1
-    storage: firefly
-    iso_image: /home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
-    kernel: /home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
-    initrd: /home/jeroen/downloads/os/pxe/centos-6.3/initrd.img
-    kickstart_path: /home/jeroen/dev/ansible/workshop/ks
 
   tasks:
 ### Create a logical volume for storage
@@ -27,12 +18,46 @@
     delegate_to: ${host}
   - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
     delegate_to: ${host}
+    register: guest
 
+  - local_action: group_by key=${guest.provisioning_status}
+
+- name: Install a minimal CentOS
+  hosts: unprovisioned
+  gather_facts: false
+  tasks:
 ### Prepare a kickstart file
   - action: file dest=${kickstart_path} state=directory
+    delegate_to: ${host}
   - action: template src=../templates/centos-6.ks dest=${kickstart_path}/${inventory_hostname}.ks
     delegate_to: ${host}
 
 ### Boot the VM using the ISO image
-  - action: virt_boot guest=${inventory_hostname} kernel=${kernel} initrd=${initrd} cmdline="linux  ks=http://${host_ip}:8000/${inventory_hostname}.ks"
+  - action: virt_boot guest=${inventory_hostname} kernel=${kernel} initrd=${initrd} cmdline="linux  ks=http://${kickstart_http}/${inventory_hostname}.ks"
     delegate_to: ${host}
+
+### Wait for kickstart to finish
+  - action: wait_for host=${ip} port=22 state=started
+    delegate_to: ${host}
+
+  - action: wait_for host=${ip} port=22 state=stopped timeout=3600
+    delegate_to: ${host}
+
+  - local_action: pause seconds=60
+
+- name: Start the Virtual Machines
+  hosts: guests
+
+  ### Can't gather facts from a machine that does not exist
+  gather_facts: false
+
+  tasks:
+  - action: virt_boot guest=${inventory_hostname} boot=hd
+    delegate_to: ${host}
+    tags:
+    - post_install
+
+  - action: wait_for host=${ip} port=22 state=started
+    delegate_to: ${host}
+    tags:
+    - post_install

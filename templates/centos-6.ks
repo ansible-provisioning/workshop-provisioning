@@ -22,7 +22,7 @@ volgroup vg_{{ inventory_hostname }}_root --pesize=4096 pv.1
 logvol / --fstype ext4 --fsoptions="noatime" --name=lv_root --vgname=vg_{{ inventory_hostname }}_root --size=4096
 logvol swap --fstype swap --name=lv_swap --vgname=vg_{{ inventory_hostname }}_root --size 1024
 
-network --bootproto=dhcp --hostname={{ inventory_hostname }}
+network --bootproto=static --hostname={{ inventory_hostname }} --ip={{ ip }} --netmask=255.255.255.0 --gateway={{ host_ip }} --nameserver={{ host_ip }}
 
 services --enabled=network,ntpd,ntpdate
 
