@@ -6,7 +6,7 @@
   tasks:
 
   - name: Install Ansible
-    action: yum pkg=$item state=installed
+    action: yum pkg=$item state=installed enablerepo=epel-testing
     with_items:
     - ansible
     - git
