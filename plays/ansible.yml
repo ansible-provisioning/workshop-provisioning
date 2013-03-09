@@ -1,0 +1,40 @@
+---
+
+- name: Configure Ansible
+  hosts: guests
+  user: root
+  tasks:
+
+  - name: Install Ansible
+    action: yum pkg=$item state=installed
+    with_items:
+    - ansible
+    - git
+
+  - name: Create an Ansible user
+    action: user name=ansible
+  - name: Install our key as authorized
+    action: authorized_key user=ansible key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCa4iPbNVUYq7Ibkvj/9qI8CmSqRRCXQ/SAg9OA7Md/1UjSMELiMZsGu4A1LHpl4ER8nIet/w78p0amueIYgvX7oVY0+3fkXRqhJzqzoFVG8GzRZgpk9z8qX8aa3Dtq4rIGBH9st5hEcp3xkeap4+sv9xDd6X8Bd5gvYaCwvbU/vlgE6iYNpp45QNEaUOx50jHD3zPU6jShuJm/SnKmxW2HjXMY9DesYil5Dh2ixrYHoFjT1G/S1y+5plpTmylymd73oeu2cl04ImfT99Iufn7GAgjisSSDFC4o04jzm8bAzMKPf8/0iN1UrHmuR9rvmRqo3yWb7LTYdygSmqDOe5FB ansible@workshop"
+
+  - name: Configure hosts file to talk to other guests
+    action: template src=../templates/etc/hosts dest=/etc/hosts
+
+- name: Create Ansible environment
+  hosts: guests
+  user: ansible
+
+  tasks:
+
+  - name: Prepare SSH directory
+    action: file dest=/home/ansible/.ssh state=directory mode=0700
+  - name: Copy private key
+    action: copy src=../id_rsa.workshop dest=/home/ansible/.ssh/id_rsa mode=0600
+  - name: Copy public key
+    action: copy src=../templates/root/ssh/id_rsa.workshop.pub dest=/home/ansible/.ssh/id_rsa.pub
+
+  - name: Prepare Ansible directory
+    action: file dest=/home/ansible/workshop state=directory
+  - name: Clone git repo from github
+    action: git repo=https://github.com/ansible-provisioning/workshop.git dest=/home/ansible/workshop
+  - name: Correct private key permissions
+    action: file dest=/home/ansible/workshop/id_rsa.workshop mode=0600
