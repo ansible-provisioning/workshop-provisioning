@@ -35,7 +35,7 @@
     delegate_to: ${host}
 
 ### Boot the VM using the ISO image
-  - action: virt_boot guest=${inventory_hostname} kernel=${kernel} initrd=${initrd} cmdline="linux  ks=http://${kickstart_http}/${inventory_hostname}.ks"
+  - action: virt_boot guest=${inventory_hostname} kernel=${kernel} initrd=${initrd} cmdline="linux sshd ksdevice=eth0 ip=${ip} netmask=255.255.255.0 gateway=192.168.122.1 ks=http://${kickstart_http}/${inventory_hostname}.ks"
     delegate_to: ${host}
 
 ### Wait for kickstart to finish
