@@ -65,7 +65,6 @@
     tags:
     - post_install
 
-  - action: lineinfile dest=/etc/hosts regexp=" ${inventory_hostname}$" line="${ip} ${inventory_hostname}"
-    delegate_to: ${host}
+  - local_action: lineinfile dest=/etc/hosts regexp=" ${inventory_hostname}$" line="${ip} ${inventory_hostname}"
     tags:
     - post_install
