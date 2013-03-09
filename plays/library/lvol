@@ -76,7 +76,6 @@ def main():
             size=dict(),
             state=dict(choices=["absent", "present"], default='present'),
         ),
-        supports_check_mode=True,
     )
 
     vg = module.params['vg']
@@ -109,19 +108,14 @@ def main():
     if this_lv is None:
         if state == 'present':
             ### create LV
-            if module.check_mode:
+            rc,_,err = module.run_command("lvcreate -n %s -L %sm %s"%(lv, size, vg))
+            if rc == 0:
                 changed = True
             else:
-                rc,_,err = module.run_command("lvcreate -n %s -L %sm %s"%(lv, size, vg))
-                if rc == 0:
-                    changed = True
-                else:
-                    module.fail_json(msg="Creating logical volume '%s' failed"%(lv), rc=rc, err=err)
+                module.fail_json(msg="Creating logical volume '%s' failed"%(lv), rc=rc, err=err)
     else:
         if state == 'absent':
             ### remove LV
-            if module.check_mode:
-                module.exit_json(changed=True)
             rc,_,err = module.run_command("lvremove --force %s"%(this_lv['path']))
             if rc == 0:
                 module.exit_json(changed=True)
@@ -135,14 +129,11 @@ def main():
             tool = 'lvreduce --force'
 
         if tool:
-            if module.check_mode:
+            rc,_,err = module.run_command("%s -L %sm %s"%(tool, size, this_lv['path']))
+            if rc == 0:
                 changed = True
             else:
-                rc,_,err = module.run_command("%s -L %sm %s"%(tool, size, this_lv['path']))
-                if rc == 0:
-                    changed = True
-                else:
-                    module.fail_json(msg="Unable to resize %s to %sm."%(lv,size),rc=rc,err=err)
+                module.fail_json(msg="Unable to resize %s to %sm."%(lv,size),rc=rc,err=err)
 
     module.exit_json(changed=changed)
 
