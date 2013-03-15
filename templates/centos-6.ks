@@ -1,9 +1,7 @@
 text
 skipx
 install
-url --url http://mirror.myip.be/pub/centos/6/os/x86_64/
-repo --name=epel --baseurl=http://download.fedoraproject.org/pub/epel/6/x86_64/
-repo --name=updates --baseurl=http://mirror.myip.be/pub/centos/6/updates/x86_64/
+url --url {{ repository_url }}
 
 lang en_US.UTF-8
 keyboard us
@@ -33,6 +31,7 @@ epel-release
 openssh-clients
 openssh-server
 yum
+createrepo
 acpid
 vixie-cron
 cronie-noanacron

@@ -8,6 +8,7 @@ ws01 ip=192.168.122.21
 command_host=firefly
 host=firefly
 host_ip=192.168.122.1
+repository_url=http://mirror.myip.be/pub/centos/6/os/x86_64/
 storage=firefly
 iso_image=/home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
 kernel=/home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
