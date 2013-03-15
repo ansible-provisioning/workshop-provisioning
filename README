@@ -1,0 +1,301 @@
+Ansible Workshop
+================
+
+Dag Wieers and Jeroen Hoekx
+v0.1, March 2013
+
+= Introduction =
+This workshop will construct a self-replicating virtual machine.
+
+We'll start with a short presentation as an introduction to Ansible.
+
+All content and code can be found at https://github.com/ansible-provisioning/workshop .
+
+== System Requirements ==
+All examples assume a Linux system with KVM/Libvirt. The default libvirt network of +192.168.122.0/24+ is assumed to be present.
+
+Using LVM for virtual machine storage works out-of-the-box. File-based disks work, but require small changes in several files.
+
+= Getting Started =
+The virtual machine has the ip address +192.168.122.21+. The root password is 123456. SSH into it.
+
+We prefer to have a dedicated user to manage our Ansible setup.
+
+--------------------------
+[root@ws01 ~]# su - ansible
+[ansible@ws01 ~]$ ls
+workshop
+[ansible@ws01 ~]$ cd workshop/
+[ansible@ws01 workshop]$ ls
+bootstrap-hosts  hosts id_rsa.workshop  plays  templates
+-------------------------
+
+== Ad-Hoc Commands ==
+The most straightforward usage of Ansible it to run commands on remote hosts. The +ping+ module checks connectivity and correct python setup.
+
+Let's assume our VM is remote and ping it.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m ping -i hosts
+ws01 | success >> {
+    "changed": false, 
+    "ping": "pong"
+}
+-------------------------
+
+The syntax is +ansible <selector> <options>+.
+
+We only want to run it on the local host, so we choose +ws01+ as selector. The module is selected with the +-m+ switch. The +-i hosts+ switch tells Ansible which list of hosts to select from.
+
+Let's check what's in that file.
+
+-------------------------
+[ansible@ws01 workshop]$ cat hosts
+[guests]
+ws01
+-------------------------
+
+I think you know how to let it talk to a second machine.
+
+It really means that we have a group of systems +guests+ with just one system +ws01+ in it.
+
+We can of course also use Ansible to get the contents of the file.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m command -a 'cat /home/ansible/workshop/hosts' -i hosts
+ws01 | success | rc=0 >>
+[guests]
+ws01
+-------------------------
+
+That uses the +command+ module and gives it arguments with +-a+. But avoid the 'hammer - nail' thing.
+
+== Installing Packages ==
+Our goal is to create a self-replicating virtual machine. We will use Ansible to set up a CentOS 6 virtual machine on the VM host. We'll boot it and run Kickstart on it from a local package repository. The packages are found on the +ws01+ machine in +/srv/http/packages+.
+
+Apache will have to serve that directory. Let's install it. The +yum+ module installs packages on systems that have +yum+. As mentioned in the introduction, Ansible manages system state. That's clear from the arguments.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=httpd state=installed' -i hosts
+ws01 | FAILED >> {
+    "changed": false, 
+    "msg": "You need to be root to perform this command.\n", 
+    "rc": 1, 
+    "results": [
+        ""
+    ]
+}
+-------------------------
+
+We're lucky that we can also access the virtual machine as +root+. The +-u+ switch.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=httpd state=installed' -i hosts -u root
+ws01 | success >> {
+    "changed": true, 
+    "msg": "", 
+    "rc": 0, 
+    "results": [
+        "\n================================================================================\n Package             Arch         Version                      Repository  Size\n================================================================================\nInstalling:\n httpd               x86_64       2.2.15-26.el6.centos         base       821 k\nInstalling for dependencies:\n apr                 x86_64       1.3.9-5.el6_2                base       123 k\n apr-util            x86_64       1.3.9-3.el6_0.1              base        87 k\n apr-util-ldap       x86_64       1.3.9-3.el6_0.1              base        15 k\n httpd-tools         x86_64       2.2.15-26.el6.centos         base        72 k\n mailcap             noarch       2.1.31-2.el6                 base        27 k\n\nTransaction Summary\n================================================================================\nInstall       6 Package(s)\n\nTotal download size: 1.1 M\nInstalled size: 3.6 M\n\nInstalled:\n  httpd.x86_64 0:2.2.15-26.el6.centos                                           \n\nDependency Installed:\n  apr.x86_64 0:1.3.9-5.el6_2                                                    \n  apr-util.x86_64 0:1.3.9-3.el6_0.1                                             \n  apr-util-ldap.x86_64 0:1.3.9-3.el6_0.1                                        \n  httpd-tools.x86_64 0:2.2.15-26.el6.centos                                     \n  mailcap.noarch 0:2.1.31-2.el6                                                 \n\n"
+    ]
+}
+-------------------------
+
+This parallel ssh is already quite powerfull. But it's not quite enough to create a self-replicating VM.
+
+= Playbooks =
+Playbooks are a powerfull abstraction of system state. They contain a series of commands (tasks) with a slightly nicer syntax (YAML).
+
+Here's a minimal example that installs Apache on all guests.
+
+-------------------------
+---
+
+- name: Configure the web server
+  hosts: guests
+  user: root
+  tasks:
+
+  - name: Install Apache
+    action: yum pkg=httpd state=installed
+-------------------------
+
+There are two indentation levels. The outer one is called a play. The inner one is for tasks. Playbooks contain plays and plays contain tasks. A play also defines on which systems the tasks should be run.
+
+In your demo system it's in +plays/01-httpd.yml+.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/01-httpd.yml -i hosts
+
+PLAY [Configure the web server] ********************* 
+
+GATHERING FACTS ********************* 
+ok: [ws01]
+
+TASK: [Install Apache] ********************* 
+ok: [ws01]
+
+PLAY RECAP ********************* 
+ws01                           : ok=2    changed=0    unreachable=0    failed=0
+-------------------------
+
+A play starts with a facts gathering phase. Variables like the operating system version or the mac addres of network interfaces will be available.
+
+== Templates ==
+
+We can also define variables in a play by using the +vars+ keyword. The next example configures Apache to serve the packages dir.
+
+-------------------------
+---
+
+- name: Configure the web server
+  hosts: guests
+  user: root
+  vars:
+    package_dir: /srv/http/packages
+  tasks:
+
+  - name: Install Apache
+    action: yum pkg=httpd state=installed
+
+  - name: Configure yum package location
+    action: template src=../templates/etc/httpd/conf.d/packages.conf dest=/etc/httpd/conf.d/packages.conf
+
+  - name: Start and enable Apache
+    action: service name=httpd state=started enabled=yes
+-------------------------
+
+We encounter 2 new Ansible modules here. The +service+ module does what you expect it to do. It starts/stops/restarts and enables services on boot.
+
+The template module is more complicated. This allows you to use the variables and facts. A template is processed with jinja2, the same templating code used in the Flask Python web framework.
+
+Our template looks like this:
+
+-------------------------
+Alias /packages {{ package_dir }}
+
+<Directory {{ package_dir }}>
+  Options +Indexes
+  Order allow,deny
+  Allow from all
+</Directory>
+-------------------------
+
+Running the playbook results in:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/02-httpd.yml -i hosts 
+
+PLAY [Configure the web server] ********************* 
+
+GATHERING FACTS ********************* 
+ok: [ws01]
+
+TASK: [Install Apache] ********************* 
+ok: [ws01]
+
+TASK: [Configure yum package location] ********************* 
+changed: [ws01]
+
+TASK: [Start and enable Apache] ********************* 
+changed: [ws01]
+
+PLAY RECAP ********************* 
+ws01                           : ok=4    changed=2    unreachable=0    failed=0 
+-------------------------
+
+Try to browse to the directory.
+
+Now, what happens when we run the playbook again?
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/02-httpd.yml -i hosts 
+
+PLAY [Configure the web server] ********************* 
+
+GATHERING FACTS ********************* 
+ok: [ws01]
+
+TASK: [Install Apache] ********************* 
+ok: [ws01]
+
+TASK: [Configure yum package location] ********************* 
+ok: [ws01]
+
+TASK: [Start and enable Apache] ********************* 
+ok: [ws01]
+
+PLAY RECAP ********************* 
+ws01                           : ok=4    changed=0    unreachable=0    failed=0
+-------------------------
+
+Exactly nothing.
+
+That's because a playbook models system state. The state we want the system to be in did not change since our last run, so nothing gets changed.
+
+Ansible modules are ideally idempotent. This means you can run them as many times as possible and when your requested state does not change, nothing on the system will change.
+
+== Notify ==
+
+Sometimes we are interested in state change and run actions when that happens. For example, when the package location configuration file for Apache changes, we want to restart Apache.
+
+An action to run when the state changes is a handler. This is just a task with another name. The same modules are available. Handlers are run at the end of the play, at least when they were notified of change.
+
+-------------------------
+---
+
+- name: Configure the web server
+  hosts: guests
+  user: root
+  vars:
+    package_dir: /srv/http/packages
+
+  handlers:
+  - name: Restart Apache
+    action: service name=httpd state=restarted
+
+  tasks:
+
+  - name: Install Apache
+    action: yum pkg=httpd state=installed
+
+  - name: Configure yum package location
+    action: template src=../templates/etc/httpd/conf.d/packages.conf.v2 dest=/etc/httpd/conf.d/packages.conf
+    notify:
+    - Restart Apache
+
+  - name: Start and enable Apache
+    action: service name=httpd state=started enabled=yes
+-------------------------
+
+We've added a comment in the configuration file. Let's run playbook +03-httpd.yml+.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/03-httpd.yml -i hosts
+
+PLAY [Configure the web server] ********************* 
+
+GATHERING FACTS ********************* 
+ok: [ws01]
+
+TASK: [Install Apache] ********************* 
+ok: [ws01]
+
+TASK: [Configure yum package location] ********************* 
+changed: [ws01]
+
+TASK: [Start and enable Apache] ********************* 
+ok: [ws01]
+
+NOTIFIED: [Restart Apache] ********************* 
+changed: [ws01]
+
+PLAY RECAP ********************* 
+ws01                           : ok=5    changed=2    unreachable=0    failed=0
+-------------------------
+
+= Advanced Inventory =
+
+Talk to the host...
+
+= Orchestrate =

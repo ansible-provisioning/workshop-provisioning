@@ -1,0 +1,9 @@
+---
+
+- name: Configure the web server
+  hosts: guests
+  user: root
+  tasks:
+
+  - name: Install Apache
+    action: yum pkg=httpd state=installed
