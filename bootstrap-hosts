@@ -3,15 +3,18 @@ firefly ansible_python_interpreter=/usr/bin/python2
 
 [guests]
 ws01 ip=192.168.122.21
+ws02 ip=192.168.122.22
 
 [guests:vars]
-command_host=firefly
+command_host=ws01
 host=firefly
 host_ip=192.168.122.1
-repository_url=http://mirror.myip.be/pub/centos/6/os/x86_64/
 storage=firefly
 iso_image=/home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
 kernel=/home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
 initrd=/home/jeroen/downloads/os/pxe/centos-6.3/initrd.img
-kickstart_path=/home/jeroen/dev/ansible/workshop/ks
-kickstart_http=192.168.122.1:8000
+kickstart_path=/srv/http/packages/ks
+kickstart_http=192.168.122.21/packages/ks
+tree_url=http://192.168.122.21/packages/tree
+repository_url=http://192.168.122.21/packages/centos
+

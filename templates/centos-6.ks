@@ -1,7 +1,8 @@
 text
 skipx
 install
-url --url {{ repository_url }}
+url --url {{ tree_url }}
+repo --name=updates --baseurl {{ repository_url }}
 
 lang en_US.UTF-8
 keyboard us
