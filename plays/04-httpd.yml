@@ -30,3 +30,13 @@
     local_action: command rsync -a --inplace --rsh='ssh -o StrictHostKeyChecking=no' ${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso root@${inventory_hostname}:${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso
   - name: Loopback mount the image
     action: mount name=${packages_path}/tree src=${centos_image} opts=ro,loop fstype=iso9660 state=mounted
+
+  - name: Create CentOS repository location
+    action: file dest=${packages_path}/centos state=directory
+  - name: Copy RPMS
+    action: copy src=${packages_path}/centos/$item dest=${packages_path}/centos/$item
+    with_items:
+    - ansible-1.0-1.el6.noarch.rpm
+    - PyYAML-3.10-3.el6.x86_64.rpm
+  - name: Create repository
+    action: command createrepo ${packages_path}/centos/

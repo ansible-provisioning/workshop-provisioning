@@ -1,5 +1,11 @@
-[ws]
+[ansible]
 name=Ansible Workshop
 baseurl={{ packages_url }}/centos
+enabled=1
+gpgcheck=0
+
+[centos]
+name=Ansible Workshop
+baseurl={{ packages_url }}/tree
 enabled=1
 gpgcheck=0
