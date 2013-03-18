@@ -34,7 +34,7 @@
 
   - name: Prepare Ansible directory
     action: file dest=/home/ansible/workshop state=directory
-  - name: Clone git repo from github
-    action: git repo=https://github.com/ansible-provisioning/workshop.git dest=/home/ansible/workshop
+  - name: Clone git repo from command host
+    action: git repo=ansible@${command_host}:workshop/ dest=/home/ansible/workshop
   - name: Correct private key permissions
     action: file dest=/home/ansible/workshop/id_rsa.workshop mode=0600
