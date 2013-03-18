@@ -28,7 +28,7 @@ services --enabled=network,ntpd,ntpdate
 poweroff
 
 %packages --nobase
-epel-release
+#epel-release
 openssh-clients
 openssh-server
 yum

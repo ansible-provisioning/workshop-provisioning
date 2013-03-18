@@ -78,3 +78,20 @@
     delegate_to: ${command_host}
     tags:
     - post_install
+
+  - name: Configure yum on the newly provisioned machine
+    action: template src=../templates/etc/yum.repos.d/ws.repo dest=/etc/yum.repos.d/ws.repo
+    tags:
+    - post_install
+
+  - name: Remove default CentOS repos
+    action: file dest=/etc/yum.repos.d/$item state=absent
+    with_items:
+    - CentOS-Base.repo
+    - CentOS-Debuginfo.repo
+    - CentOS-Media.repo
+    - CentOS-Vault.repo
+    - epel.repo
+    - epel-testing.repo
+    tags:
+    - post_install
