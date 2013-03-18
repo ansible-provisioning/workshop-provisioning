@@ -10,11 +10,5 @@ command_host=ws01
 host=firefly
 host_ip=192.168.122.1
 storage=firefly
-iso_image=/home/jeroen/downloads/os/CentOS-6.3-x86_64-netinstall.iso
-kernel=/home/jeroen/downloads/os/pxe/centos-6.3/vmlinuz
-initrd=/home/jeroen/downloads/os/pxe/centos-6.3/initrd.img
-kickstart_path=/srv/http/packages/ks
-kickstart_http=192.168.122.21/packages/ks
-tree_url=http://mirror.myip.be/pub/centos/6/os/x86_64/
-repository_url=http://192.168.122.21/packages/centos
-
+packages_path=/srv/http/packages
+packages_url=http://192.168.122.21/packages
