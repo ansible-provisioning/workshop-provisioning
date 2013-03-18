@@ -19,6 +19,9 @@
   - name: Configure hosts file to talk to other guests
     action: template src=../templates/etc/hosts dest=/etc/hosts
 
+  - name: Disable strict host key checking for the demo
+    action: copy src=../templates/etc/ssh/ssh_config dest=/etc/ssh/ssh_config
+
 - name: Create Ansible environment
   hosts: guests
   user: ansible
