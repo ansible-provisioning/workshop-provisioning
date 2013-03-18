@@ -77,7 +77,7 @@ def main():
     if module.params['state'] == 'present':
         if not module.params['size']:
             module.fail_json(msg="Parameter 'size' required")
-        size = module.params['size'] * 1024 * 1024
+        size = int(module.params['size']) * 1024 * 1024
 
         if not os.path.exists(dest):
             module.run_command('%s create -f %s %s %s'%(qemu_img, img_format, dest, size), check_rc=True)
