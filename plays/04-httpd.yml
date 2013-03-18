@@ -24,9 +24,9 @@
   - name: Start and enable Apache
     action: service name=httpd state=started enabled=yes
 
-  - name: Copy CentOS ISO image
-    action: copy src=${centos_image} dest=${centos_image}
   - name: Create tree location
     action: file dest=${packages_path}/tree state=directory
+  - name: Copy CentOS ISO image
+    action: get_url url=${packages_url}/CentOS-6.4-x86_64-bin-DVD1.iso dest=${centos_image}
   - name: Loopback mount the image
     action: mount name=${packages_path}/tree src=${centos_image} opts=loop
