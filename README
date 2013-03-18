@@ -96,15 +96,16 @@ ws01 | success >> {
     "msg": "", 
     "rc": 0, 
     "results": [
-        "\n================================================================================\n Package             Arch         Version                      Repository  Size\n================================================================================\nInstalling:\n httpd               x86_64       2.2.15-26.el6.centos         base       821 k\nInstalling for dependencies:\n apr                 x86_64       1.3.9-5.el6_2                base       123 k\n apr-util            x86_64       1.3.9-3.el6_0.1              base        87 k\n apr-util-ldap       x86_64       1.3.9-3.el6_0.1              base        15 k\n httpd-tools         x86_64       2.2.15-26.el6.centos         base        72 k\n mailcap             noarch       2.1.31-2.el6                 base        27 k\n\nTransaction Summary\n================================================================================\nInstall       6 Package(s)\n\nTotal download size: 1.1 M\nInstalled size: 3.6 M\n\nInstalled:\n  httpd.x86_64 0:2.2.15-26.el6.centos                                           \n\nDependency Installed:\n  apr.x86_64 0:1.3.9-5.el6_2                                                    \n  apr-util.x86_64 0:1.3.9-3.el6_0.1                                             \n  apr-util-ldap.x86_64 0:1.3.9-3.el6_0.1                                        \n  httpd-tools.x86_64 0:2.2.15-26.el6.centos                                     \n  mailcap.noarch 0:2.1.31-2.el6                                                 \n\n"
+        "\n================================================================================\n Package             Arch         Version                      Repository  Size\n================================================================================\nInstalling:\n httpd               x86_64       2.2.15-26.el6.centos         base       821 k\nInstalling for dependencies:\n apr                 x86_64       1.3.9-5.el6_2                base       123 k\n apr-util            x86_64       1.3.9-3.el6_0.1              base        87 k\n apr-util-ldap       x86_64       1.3.9-3.el6_0.1              base        15 k\n httpd-tools         x86_64       2.2.15-26.el6.centos         base        72 k\n mailcap             noarch       2.1.31-2.el6                 base        27 k\n\nTransaction Summary\n================================================================================\nInstall       6 Package(s)\n\nTotal download size: 1.1 M\nInstalled size: 3.6 M\n\nInstalled:\n  httpd.x86_64 0:2.2.15-26.el6.centos  
+                                         \n\nDependency Installed:\n  apr.x86_64 0:1.3.9-5.el6_2                                                    \n  apr-util.x86_64 0:1.3.9-3.el6_0.1                                             \n  apr-util-ldap.x86_64 0:1.3.9-3.el6_0.1                                        \n  httpd-tools.x86_64 0:2.2.15-26.el6.centos                                     \n  mailcap.noarch 0:2.1.31-2.el6                                                 \n\n"
     ]
 }
 -------------------------
 
-This parallel ssh is already quite powerfull. But it's not quite enough to create a self-replicating VM.
+This parallel ssh is already quite powerful. But it's not quite enough to create a self-replicating VM.
 
 = Playbooks =
-Playbooks are a powerfull abstraction of system state. They contain a series of commands (tasks) with a slightly nicer syntax (YAML).
+Playbooks are a powerful abstraction of system state. They contain a series of commands (tasks) with a slightly nicer syntax (YAML).
 
 Here's a minimal example that installs Apache on all guests.
 
@@ -296,6 +297,65 @@ ws01                           : ok=5    changed=2    unreachable=0    failed=0
 
 = Advanced Inventory =
 
-Talk to the host...
+Playbooks are only marginally useful when you run them on one machine. They become very powerful once you start managing multiple systems.
+
+Ansible does not do a name lookup when you specify you want to run something on 'ws01'. Ansible needs a host to be in the inventory file before it wants to talk to it. We've shown a very simple inventory file before:
+
+-------------------------
+[guests]
+ws01
+-------------------------
+
+Let's add the virtual machine host to it:
+
+-------------------------
+[ansible@ws01 workshop]$ cat hosts 
+[guests]
+ws01
+
+[hosts]
+192.168.122.1
+-------------------------
+
+Ansible uses SSH to talk to systems. The recommended way to login is to use public key authentication.
+
+Add the virtual machine public key to the hosts +/root/.ssh/authorized_keys+ file.
+
+-------------------------
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCa4iPbNVUYq7Ibkvj/9qI8CmSqRRCXQ/SAg9OA7Md/1UjSMELiMZsGu4A1LHpl4ER8nIet/w78p0amueIYgvX7oVY0+3fkXRqhJzqzoFVG8GzRZgpk9z8qX8aa3Dtq4rIGBH9st5hEcp3xkeap4+sv9xDd6X8Bd5gvYaCwvbU/vlgE6iYNpp45QNEaUOx50jHD3zPU6jShuJm/SnKmxW2HjXMY9DesYil5Dh2ixrYHoFjT1G/S1y+5plpTmylymd73oeu2cl04ImfT99Iufn7GAgjisSSDFC4o04jzm8bAzMKPf8/0iN1UrHmuR9rvmRqo3yWb7LTYdygSmqDOe5FB ansible@workshop
+-------------------------
+
+Try to login, you should not see any password prompt:
+
+-------------------------
+[ansible@ws01 workshop]$ ssh root@192.168.122.1
+Last login: Fri Mar 15 13:15:28 2013 from ws01
+[root@firefly ~]#
+-------------------------
+
+Now try to ping it with Ansible:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible 192.168.122.1 -m ping -u root -i hosts
+192.168.122.1 | success >> {
+    "changed": false, 
+    "ping": "pong"
+}
+-------------------------
+
+We can now talk to multiple systems at once. The first argument to +ansible+ is not a system name, but a system selector. A magic value of 'all' will run a command on all systems.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible all -m ping -u root -i hosts
+192.168.122.1 | success >> {
+    "changed": false, 
+    "ping": "pong"
+}
+
+ws01 | success >> {
+    "changed": false, 
+    "ping": "pong"
+}
+-------------------------
 
 = Orchestrate =
