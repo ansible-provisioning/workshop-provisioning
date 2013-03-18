@@ -11,6 +11,13 @@
 ### Create a logical volume for storage
   - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
     delegate_to: ${host}
+    when_unset: ${qemu_img_path}
+  - action: file dest=${qemu_img_path} state=directory
+    delegate_to: ${host}
+    when_set: ${qemu_img_path}
+  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
+    delegate_to: ${host}
+    when_set: ${qemu_img_path}
 
 ### Create a virtual machine
   - action: file dest=/tmp/vm-${inventory_hostname} state=directory

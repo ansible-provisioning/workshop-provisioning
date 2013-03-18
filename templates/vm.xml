@@ -23,8 +23,13 @@
 
   <devices>
     <disk type='block' device='disk'>
+{% if qemu_img_path %}
+      <driver name='qemu' type='qcow2' cache='writeback'/>
+      <source dev='{{ qemu_img_path }}/{{ inventory_hostname }}.img'/>
+{% else %}
       <driver name='qemu' type='raw' cache='none'/>
       <source dev='/dev/{{ storage }}/lv_{{ inventory_hostname }}_root'/>
+{% endif %}
       <target dev='vda' bus='virtio'/>
     </disk>
 
