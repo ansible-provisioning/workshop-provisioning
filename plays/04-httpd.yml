@@ -1,0 +1,32 @@
+---
+
+- name: Configure the web server
+  hosts: guests
+  user: root
+  vars:
+    package_dir: /srv/http/packages
+    centos_image: /srv/http/packages/CentOS-6.4-x86_64-bin-DVD1.iso
+
+  handlers:
+  - name: Restart Apache
+    action: service name=httpd state=restarted
+
+  tasks:
+
+  - name: Install Apache
+    action: yum pkg=httpd state=installed
+
+  - name: Configure yum package location
+    action: template src=../templates/etc/httpd/conf.d/packages.conf dest=/etc/httpd/conf.d/packages.conf
+    notify:
+    - Restart Apache
+
+  - name: Start and enable Apache
+    action: service name=httpd state=started enabled=yes
+
+  - name: Copy CentOS ISO image
+    action: copy src=${centos_image} dest=${centos_image}
+  - name: Create tree location
+    action: file dest=${packages_path}/tree state=directory
+  - name: Loopback mount the image
+    action: mount name=${packages_path}/tree src=${centos_image} opts=loop
