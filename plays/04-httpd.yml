@@ -27,6 +27,6 @@
   - name: Create tree location
     action: file dest=${packages_path}/tree state=directory
   - name: Copy CentOS ISO image
-    local_action: command rsync --rsh='ssh -o StrictHostKeyChecking=no' ${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso root@${inventory_hostname}:${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso
+    local_action: command rsync -a --inplace --rsh='ssh -o StrictHostKeyChecking=no' ${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso root@${inventory_hostname}:${packages_path}/CentOS-6.4-x86_64-bin-DVD1.iso
   - name: Loopback mount the image
-    action: mount name=${packages_path}/tree src=${centos_image} opts=loop fstype=iso9660 state=present
+    action: mount name=${packages_path}/tree src=${centos_image} opts=ro,loop fstype=iso9660 state=mounted
