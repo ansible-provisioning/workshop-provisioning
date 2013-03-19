@@ -358,4 +358,328 @@ ws01 | success >> {
 }
 -------------------------
 
+There are a lot of selectors you can choose from. The on-line documentation on them is excellent.
+
 = Orchestrate =
+
+We can now talk to the host. In order to deploy a virtual machine we first need to allocate storage.
+
+Using libvirt you have two options:
+
+- Use logical volumes
+- Use file based storage
+
+In production environments the LVM based approach is better, but for testing the file based storage might be good enough.
+
+There are Ansible modules for both.
+
+If you decide to go the LVM way you use the lvol module. There is one concept we have to introduce here. That's delegation of tasks. What we want to do is to create storage for the guest, but we want to do it on the host.
+
+The playbook looks like this:
+
+-------------------------
+---
+
+- name: Allocate VM storage
+  hosts: guests
+  user: root
+  gather_facts: false
+
+  tasks:
+  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
+    delegate_to: ${host}
+-------------------------
+
+You can see a few variables in here. They have to be defined in the inventory file. The +storage+ variable defines the volume group. The +host+ variable sets the host the storage has to be created on. The +inventory_hostname+ variable is Ansible magic. It's set to the name of the system in your inventory file.
+
+All variables are subsituted for every system in the selector. So they don't need to have the same values.
+
+Let's add the second VM we want to provision and define the variables:
+
+-------------------------
+[ansible@ws01 workshop]$ cat hosts 
+[guests]
+ws01
+ws02
+
+[guests:vars]
+host=192.168.122.1
+storage=firefly
+
+[hosts]
+192.168.122.1
+-------------------------
+
+This introduces group variables for the 'guests' group.
+
+We can run it:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/storage.yml --limit=ws02 -i hosts 
+
+PLAY [Allocate VM storage] ********************* 
+
+TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240] ********************* 
+changed: [ws02]
+
+PLAY RECAP ********************* 
+ws02                           : ok=1    changed=1    unreachable=0    failed=0
+-------------------------
+
+There's a new parameter to +ansible-playbook+. We've used +--limit=ws02+ to limit the playbook to system +ws02+. Any selector is valid here.
+
+If you use qemu storage, the playbook would be similar.
+
+-------------------------
+---
+
+- name: Allocate VM storage
+  hosts: guests
+  user: root
+  gather_facts: false
+
+  tasks:
+  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
+    delegate_to: ${host}
+-------------------------
+
+In this case we would need to define the +qemu_img_path+ variable in the inventory.
+
+-------------------------
+[ansible@ws01 workshop]$ cat hosts 
+[guests]
+ws01
+ws02
+
+[guests:vars]
+host=192.168.122.1
+qemu_img_path=/var/lib/libvirt/images
+
+[hosts]
+192.168.122.1
+-------------------------
+
+And run the playbook:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/storage-qemu.yml --limit=ws02 -i hosts
+
+PLAY [Allocate VM storage] ********************* 
+
+TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2] ********************* 
+changed: [ws02]
+
+PLAY RECAP ********************* 
+ws02                           : ok=1    changed=1    unreachable=0    failed=0
+-------------------------
+
+== Conditionals ==
+
+Now it's not really useful to have two separate playbooks. We want a way to have both methods in one playbook and choose which one to use depending on the variables that exist.
+
+Ansible has conditionals that allow you to do just that:
+
+-------------------------
+---
+
+- name: Allocate VM storage
+  hosts: guests
+  user: root
+  gather_facts: false
+
+  tasks:
+  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
+    delegate_to: ${host}
+    when_set: ${storage}
+
+  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
+    delegate_to: ${host}
+    when_set: ${qemu_img_path}
+-------------------------
+
+When we run it you will see that Ansible skipped the first one since only +qemu_img_path+ is defined.
+
+-------------------------
+ansible@ws01 workshop]$ ansible-playbook plays/storage.yml --limit=ws02 -i hosts
+
+PLAY [Allocate VM storage] ********************* 
+
+TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240] ********************* 
+skipping: [ws02]
+
+TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2] ********************* 
+ok: [ws02]
+
+PLAY RECAP ********************* 
+ws02                           : ok=1    changed=0    unreachable=0    failed=0
+-------------------------
+
+== Creating Virtual Machines ==
+
+The next step is to actually create the virtual machine. Libvirt uses an XML description of it. We can just template that to the host and use the +virt_guest+ module to create the VM.
+
+-------------------------
+---
+
+- name: Create the VM
+  hosts: guests
+  user: root
+  gather_facts: false
+  tasks:
+  - action: file dest=/tmp/vm-${inventory_hostname} state=directory
+    delegate_to: ${host}
+  - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+  - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+-------------------------
+
+We'll run this with verbose output:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/create-vm.yml --limit=ws02 -i hosts --verbose
+
+PLAY [Create the VM] ********************* 
+
+TASK: [file dest=/tmp/vm-${inventory_hostname} state=directory] ********************* 
+ok: [ws02] => {"changed": false, "group": "root", "mode": "0755", "owner": "root", "path": "/tmp/vm-ws02", "state": "directory"}
+
+TASK: [template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+ok: [ws02] => {"changed": false, "dest": "/tmp/vm-ws02/vm.xml", "group": "root", "md5sum": "e59d86439a8db5f75f8fa9b9ba71694f", "mode": "0644", "owner": "root", "src": "/root/.ansible/tmp/ansible-1363682702.78-165223814933759/source", "state": "file"}
+
+TASK: [virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+changed: [ws02] => {"changed": true, "provisioning_status": "unprovisioned"}
+
+PLAY RECAP ********************* 
+ws02                           : ok=3    changed=1    unreachable=0    failed=0
+-------------------------
+
+The verbose output shows the variables that modules return. This is stored in memory per system.
+
+In the next provisioning steps we don't want to reprovision an existing system. We can use the +provisioning_status+ variable returned by the +virt_guest+ module to limit our selection. We're not going to use the conditionals because that would look very ugly. The +group_by+ modules creates ad-hoc groups of systems.
+
+-------------------------
+---
+
+- name: Create the VM
+  hosts: guests
+  user: root
+  gather_facts: false
+  tasks:
+  - action: file dest=/tmp/vm-${inventory_hostname} state=directory
+    delegate_to: ${host}
+  - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+  - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+    register: guest
+
+  - local_action: group_by key=${guest.provisioning_status}
+-------------------------
+
+Two new concepts here. The register keyword stores the output variables of a module in that variable. Group by creates a group with the given key. This is run on the command host.
+
+To use the new group, we add a second play to the playbook. This will create a kickstart file.
+
+-------------------------
+---
+
+- name: Create the VM
+  hosts: guests
+  user: root
+  gather_facts: false
+  tasks:
+  - action: file dest=/tmp/vm-${inventory_hostname} state=directory
+    delegate_to: ${host}
+  - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+  - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+    register: guest
+
+  - local_action: group_by key=${guest.provisioning_status}
+
+- name: Install a minimal CentOS
+  hosts: unprovisioned
+  gather_facts: false
+  user: root
+  tasks:
+### Prepare a kickstart file
+  - action: file dest=${packages_path}/ks state=directory
+    delegate_to: ${command_host}
+  - action: template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks
+    delegate_to: ${command_host}
+-------------------------
+
+We need to define a few more variables:
+
+-------------------------
+[ansible@ws01 workshop]$ cat hosts 
+[guests]
+ws01
+ws02
+
+[guests:vars]
+host=192.168.122.1
+qemu_img_path=/var/lib/libvirt/images
+command_host=ws01
+packages_path=/srv/http/packages
+packages_url=http://192.168.122.21/packages
+
+[hosts]
+192.168.122.1
+-------------------------
+
+Let's run it twice:
+
+-------------------------
+[ansible@ws01 workshop]$ ansible-playbook plays/provision.yml --limit=ws02 -i hosts 
+
+PLAY [Create the VM] ********************* 
+
+TASK: [file dest=/tmp/vm-${inventory_hostname} state=directory] ********************* 
+ok: [ws02]
+
+TASK: [template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+ok: [ws02]
+
+TASK: [virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+changed: [ws02]
+
+TASK: [group_by key=${guest.provisioning_status}] ********************* 
+changed: [ws02]
+
+PLAY [Install a minimal CentOS] ********************* 
+
+TASK: [file dest=${packages_path}/ks state=directory] ********************* 
+changed: [ws02]
+
+TASK: [template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks] ********************* 
+changed: [ws02]
+
+PLAY RECAP ********************* 
+ws02                           : ok=6    changed=4    unreachable=0    failed=0    
+
+
+[ansible@ws01 workshop]$ ansible-playbook plays/provision.yml --limit=ws02 -i hosts 
+
+PLAY [Create the VM] ********************* 
+
+TASK: [file dest=/tmp/vm-${inventory_hostname} state=directory] ********************* 
+ok: [ws02]
+
+TASK: [template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+ok: [ws02]
+
+TASK: [virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml] ********************* 
+ok: [ws02]
+
+TASK: [group_by key=${guest.provisioning_status}] ********************* 
+changed: [ws02]
+
+PLAY [Install a minimal CentOS] ********************* 
+skipping: no hosts matched
+
+PLAY RECAP ********************* 
+ws02                           : ok=4    changed=1    unreachable=0    failed=0
+-------------------------
