@@ -21,27 +21,27 @@ The virtual machine has the ip address +192.168.122.21+. The root password is 12
 
 We prefer to have a dedicated user to manage our Ansible setup.
 
---------------------------
+----
 [root@ws01 ~]# su - ansible
 [ansible@ws01 ~]$ ls
 workshop
 [ansible@ws01 ~]$ cd workshop/
 [ansible@ws01 workshop]$ ls
 bootstrap-hosts  hosts id_rsa.workshop  plays  templates
--------------------------
+----
 
 === Ad-Hoc Commands ===
 The most straightforward usage of Ansible it to run commands on remote hosts. The +ping+ module checks connectivity and correct python setup.
 
 Let's assume our VM is remote and ping it.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m ping -i hosts
 ws01 | success >> {
     "changed": false, 
     "ping": "pong"
 }
--------------------------
+----
 
 The syntax is +ansible <selector> <options>+.
 
@@ -49,11 +49,11 @@ We only want to run it on the local host, so we choose +ws01+ as selector. The m
 
 Let's check what's in that file.
 
--------------------------
+----
 [ansible@ws01 workshop]$ cat hosts
 [guests]
 ws01
--------------------------
+----
 
 I think you know how to let it talk to a second machine.
 
@@ -61,12 +61,12 @@ It really means that we have a group of systems +guests+ with just one system +w
 
 We can of course also use Ansible to get the contents of the file.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m command -a 'cat /home/ansible/workshop/hosts' -i hosts
 ws01 | success | rc=0 >>
 [guests]
 ws01
--------------------------
+----
 
 That uses the +command+ module and gives it arguments with +-a+. But avoid the 'hammer - nail' thing.
 
@@ -75,7 +75,7 @@ Our goal is to create a self-replicating virtual machine. We will use Ansible to
 
 Apache will have to serve that directory. Let's install it. The +yum+ module installs packages on systems that have +yum+. As mentioned in the introduction, Ansible manages system state. That's clear from the arguments.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=httpd state=installed' -i hosts
 ws01 | success >> {
     "changed": false, 
@@ -85,11 +85,11 @@ ws01 | success >> {
         "httpd-2.2.15-26.el6.centos.x86_64 providing httpd is already installed"
     ]
 }
--------------------------
+----
 
 Apache was already installed. Let's install vim.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=installed' -i hosts
 ws01 | FAILED >> {
     "changed": false, 
@@ -99,11 +99,11 @@ ws01 | FAILED >> {
         ""
     ]
 }
--------------------------
+----
 
 Try it again, this time as root user:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=installed' -i hosts -u root
 ws01 | success >> {
     "changed": true, 
@@ -113,12 +113,12 @@ ws01 | success >> {
         "\n================================================================================\n Package             Arch          Version                  Repository     Size\n================================================================================\nInstalling:\n vim-enhanced        x86_64        2:7.2.411-1.8.el6        centos        892 k\nInstalling for dependencies:\n gpm-libs            x86_64        1.20.6-12.el6            centos         28 k\n vim-common          x86_64        2:7.2.411-1.8.el6        centos        6.0 M\n\nTransaction Summary\n================================================================================\nInstall       3 Package(s)\n\nTotal download size: 6.9 M\nInstalled size: 19 M\n\nInstalled:\n  vim-enhanced.x86_64 2:7.2.411-1.8.el6                                         \n\nDependency Installed:\n  gpm-libs.x86_64 0:1.20.6-12.el6      vim-common.x86_64 2:7.2.411-1.8.el6     \n\n"
     ]
 }
--------------------------
+----
 
 
 How does uninstalling a package work?
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=absent' -i hosts -u root
 ws01 | success >> {
     "changed": true, 
@@ -128,7 +128,7 @@ ws01 | success >> {
         "\n================================================================================\n Package            Arch         Version                    Repository     Size\n================================================================================\nRemoving:\n vim-enhanced       x86_64       2:7.2.411-1.8.el6          @centos       1.8 M\n\nTransaction Summary\n================================================================================\nRemove        1 Package(s)\n\nInstalled size: 1.8 M\n\nRemoved:\n  vim-enhanced.x86_64 2:7.2.411-1.8.el6                                         \n\n"
     ]
 }
--------------------------
+----
 
 You can run the previous commands on many machines in parallel. This parallel ssh is already quite powerful. But it's not quite enough to create a self-replicating VM.
 
@@ -137,7 +137,7 @@ Playbooks are a powerful abstraction of system state. They contain a series of c
 
 Here's a minimal example that make sure Apache is on all guests.
 
--------------------------
+----
 ---
 
 - name: Configure the web server
@@ -147,13 +147,13 @@ Here's a minimal example that make sure Apache is on all guests.
 
   - name: Install Apache
     action: yum pkg=httpd state=installed
--------------------------
+----
 
 There are two indentation levels. The outer one is called a play. The inner one is for tasks. Playbooks contain plays and plays contain tasks. A play also defines on which systems the tasks should be run.
 
 Save it as +plays/01-httpd.yml+.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/01-httpd.yml -i hosts
 
 PLAY [Configure the web server] ********************* 
@@ -166,22 +166,22 @@ ok: [ws01]
 
 PLAY RECAP ********************* 
 ws01                           : ok=2    changed=0    unreachable=0    failed=0
--------------------------
+----
 
 A play starts with a facts gathering phase. Variables like the operating system version or the mac addres of network interfaces will be available.
 
 Facts gathering is done by the +setup+ module. Run it to see which facts are available.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible ws01 -m setup -i hosts -u root
 ...
--------------------------
+----
 
 === Templates ===
 
 We can also define variables in a play by using the +vars+ keyword. The next example configures Apache to serve the packages dir.
 
--------------------------
+----
 ---
 
 - name: Configure the web server
@@ -199,7 +199,7 @@ We can also define variables in a play by using the +vars+ keyword. The next exa
 
   - name: Start and enable Apache
     action: service name=httpd state=started enabled=yes
--------------------------
+----
 
 We encounter 2 new Ansible modules here. The +service+ module does what you expect it to do. It starts/stops/restarts and enables services on boot.
 
@@ -207,7 +207,7 @@ The template module is more complicated. This allows you to use the variables an
 
 Our template (in +templates/etc/http/conf.d/packages.conf+) looks like this:
 
--------------------------
+----
 Alias /packages {{ package_dir }}
 
 <Directory {{ package_dir }}>
@@ -215,13 +215,13 @@ Alias /packages {{ package_dir }}
   Order allow,deny
   Allow from all
 </Directory>
--------------------------
+----
 
 Variables can be defined in multiple places. You can add them to the inventory, create special variable files or define them in a play.
 
 Running the playbook results in:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/02-httpd.yml -i hosts 
 
 PLAY [Configure the web server] ********************* 
@@ -240,13 +240,13 @@ changed: [ws01]
 
 PLAY RECAP ********************* 
 ws01                           : ok=4    changed=2    unreachable=0    failed=0 
--------------------------
+----
 
 Try to browse to the directory.
 
 Now, what happens when we run the playbook again?
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/02-httpd.yml -i hosts 
 
 PLAY [Configure the web server] ********************* 
@@ -265,7 +265,7 @@ ok: [ws01]
 
 PLAY RECAP ********************* 
 ws01                           : ok=4    changed=0    unreachable=0    failed=0
--------------------------
+----
 
 Exactly nothing.
 
@@ -279,7 +279,7 @@ Sometimes we are interested in state change and run actions when that happens. F
 
 An action to run when the state changes is a handler. This is just a task with another name. The same modules are available. Handlers are run at the end of the play, at least when they were notified of change.
 
--------------------------
+----
 ---
 
 - name: Configure the web server
@@ -304,11 +304,11 @@ An action to run when the state changes is a handler. This is just a task with a
 
   - name: Start and enable Apache
     action: service name=httpd state=started enabled=yes
--------------------------
+----
 
 We've added a comment in the configuration file. Let's run that playbook.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/03-httpd.yml -i hosts
 
 PLAY [Configure the web server] ********************* 
@@ -330,7 +330,7 @@ changed: [ws01]
 
 PLAY RECAP ********************* 
 ws01                           : ok=5    changed=2    unreachable=0    failed=0
--------------------------
+----
 
 == Advanced Inventory ==
 
@@ -338,51 +338,51 @@ Playbooks are only marginally useful when you run them on one machine. They beco
 
 Ansible does not do a name lookup when you specify you want to run something on 'ws01'. Ansible needs a host to be in the inventory file before it wants to talk to it. We've shown a very simple inventory file before:
 
--------------------------
+----
 [guests]
 ws01
--------------------------
+----
 
 Let's add the virtual machine host to it:
 
--------------------------
+----
 [ansible@ws01 workshop]$ cat hosts 
 [guests]
 ws01
 
 [hosts]
 192.168.122.1
--------------------------
+----
 
 Ansible uses SSH to talk to systems. The recommended way to login is to use public key authentication.
 
 Add the virtual machine public key to the hosts +/root/.ssh/authorized_keys+ file.
 
--------------------------
+----
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCa4iPbNVUYq7Ibkvj/9qI8CmSqRRCXQ/SAg9OA7Md/1UjSMELiMZsGu4A1LHpl4ER8nIet/w78p0amueIYgvX7oVY0+3fkXRqhJzqzoFVG8GzRZgpk9z8qX8aa3Dtq4rIGBH9st5hEcp3xkeap4+sv9xDd6X8Bd5gvYaCwvbU/vlgE6iYNpp45QNEaUOx50jHD3zPU6jShuJm/SnKmxW2HjXMY9DesYil5Dh2ixrYHoFjT1G/S1y+5plpTmylymd73oeu2cl04ImfT99Iufn7GAgjisSSDFC4o04jzm8bAzMKPf8/0iN1UrHmuR9rvmRqo3yWb7LTYdygSmqDOe5FB ansible@workshop
--------------------------
+----
 
 Try to login, you should not see any password prompt:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ssh root@192.168.122.1
 Last login: Fri Mar 15 13:15:28 2013 from ws01
 [root@firefly ~]#
--------------------------
+----
 
 Now try to ping it with Ansible:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible 192.168.122.1 -m ping -u root -i hosts
 192.168.122.1 | success >> {
     "changed": false, 
     "ping": "pong"
 }
--------------------------
+----
 
 We can now talk to multiple systems at once. The first argument to +ansible+ is not a system name, but a system selector. A magic value of 'all' will run a command on all systems.
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible all -m ping -u root -i hosts
 192.168.122.1 | success >> {
     "changed": false, 
@@ -393,7 +393,7 @@ ws01 | success >> {
     "changed": false, 
     "ping": "pong"
 }
--------------------------
+----
 
 There are a lot of selectors you can choose from. The on-line documentation on them is excellent.
 
@@ -414,7 +414,7 @@ If you decide to go the LVM way you use the lvol module. There is one concept we
 
 The playbook looks like this:
 
--------------------------
+----
 ---
 
 - name: Allocate VM storage
@@ -425,7 +425,7 @@ The playbook looks like this:
   tasks:
   - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
     delegate_to: ${host}
--------------------------
+----
 
 You can see a few variables in here. They have to be defined in the inventory file. The +storage+ variable defines the volume group. The +host+ variable sets the host the storage has to be created on. The +inventory_hostname+ variable is Ansible magic. It's set to the name of the system in your inventory file.
 
@@ -433,7 +433,7 @@ All variables are subsituted for every system in the selector. So they don't nee
 
 Let's add the second VM we want to provision and define the variables:
 
--------------------------
+----
 [ansible@ws01 workshop]$ cat hosts 
 [guests]
 ws01
@@ -445,13 +445,13 @@ storage=firefly
 
 [hosts]
 192.168.122.1
--------------------------
+----
 
 This introduces group variables for the 'guests' group.
 
 We can run it:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/storage.yml --limit=ws02 -i hosts 
 
 PLAY [Allocate VM storage] ********************* 
@@ -461,13 +461,13 @@ changed: [ws02]
 
 PLAY RECAP ********************* 
 ws02                           : ok=1    changed=1    unreachable=0    failed=0
--------------------------
+----
 
 There's a new parameter to +ansible-playbook+. We've used +--limit=ws02+ to limit the playbook to system +ws02+. Any selector is valid here.
 
 If you use qemu storage, the playbook would be similar.
 
--------------------------
+----
 ---
 
 - name: Allocate VM storage
@@ -478,11 +478,11 @@ If you use qemu storage, the playbook would be similar.
   tasks:
   - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
     delegate_to: ${host}
--------------------------
+----
 
 In this case we would need to define the +qemu_img_path+ variable in the inventory.
 
--------------------------
+----
 [ansible@ws01 workshop]$ cat hosts 
 [guests]
 ws01
@@ -494,11 +494,11 @@ qemu_img_path=/var/lib/libvirt/images
 
 [hosts]
 192.168.122.1
--------------------------
+----
 
 And run the playbook:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/storage-qemu.yml --limit=ws02 -i hosts
 
 PLAY [Allocate VM storage] ********************* 
@@ -508,7 +508,7 @@ changed: [ws02]
 
 PLAY RECAP ********************* 
 ws02                           : ok=1    changed=1    unreachable=0    failed=0
--------------------------
+----
 
 === Conditionals ===
 
@@ -516,7 +516,7 @@ Now it's not really useful to have two separate playbooks. We want a way to have
 
 Ansible has conditionals that allow you to do just that:
 
--------------------------
+----
 ---
 
 - name: Allocate VM storage
@@ -532,11 +532,11 @@ Ansible has conditionals that allow you to do just that:
   - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
     delegate_to: ${host}
     when_set: ${qemu_img_path}
--------------------------
+----
 
 When we run it you will see that Ansible skipped the first one since only +qemu_img_path+ is defined.
 
--------------------------
+----
 ansible@ws01 workshop]$ ansible-playbook plays/storage.yml --limit=ws02 -i hosts
 
 PLAY [Allocate VM storage] ********************* 
@@ -549,13 +549,13 @@ ok: [ws02]
 
 PLAY RECAP ********************* 
 ws02                           : ok=1    changed=0    unreachable=0    failed=0
--------------------------
+----
 
 === Creating Virtual Machines ===
 
 The next step is to actually create the virtual machine. Libvirt uses an XML description of it. We can just template that to the host and use the +virt_guest+ module to create the VM.
 
--------------------------
+----
 ---
 
 - name: Create the VM
@@ -569,11 +569,11 @@ The next step is to actually create the virtual machine. Libvirt uses an XML des
     delegate_to: ${host}
   - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
     delegate_to: ${host}
--------------------------
+----
 
 We'll run this with verbose output:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/create-vm.yml --limit=ws02 -i hosts --verbose
 
 PLAY [Create the VM] ********************* 
@@ -589,13 +589,13 @@ changed: [ws02] => {"changed": true, "provisioning_status": "unprovisioned"}
 
 PLAY RECAP ********************* 
 ws02                           : ok=3    changed=1    unreachable=0    failed=0
--------------------------
+----
 
 The verbose output shows the variables that modules return. This is stored in memory per system.
 
 In the next provisioning steps we don't want to reprovision an existing system. We can use the +provisioning_status+ variable returned by the +virt_guest+ module to limit our selection. We're not going to use the conditionals because that would look very ugly. The +group_by+ modules creates ad-hoc groups of systems.
 
--------------------------
+----
 ---
 
 - name: Create the VM
@@ -612,13 +612,13 @@ In the next provisioning steps we don't want to reprovision an existing system. 
     register: guest
 
   - local_action: group_by key=${guest.provisioning_status}
--------------------------
+----
 
 Two new concepts here. The register keyword stores the output variables of a module in that variable. Group by creates a group with the given key. This is run on the command host.
 
 To use the new group, we add a second play to the playbook. This will create a kickstart file.
 
--------------------------
+----
 ---
 
 - name: Create the VM
@@ -646,11 +646,11 @@ To use the new group, we add a second play to the playbook. This will create a k
     delegate_to: ${command_host}
   - action: template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks
     delegate_to: ${command_host}
--------------------------
+----
 
 We need to define a few more variables:
 
--------------------------
+----
 [ansible@ws01 workshop]$ cat hosts 
 [guests]
 ws01
@@ -665,11 +665,11 @@ packages_url=http://192.168.122.21/packages
 
 [hosts]
 192.168.122.1
--------------------------
+----
 
 Let's run it twice:
 
--------------------------
+----
 [ansible@ws01 workshop]$ ansible-playbook plays/provision.yml --limit=ws02 -i hosts 
 
 PLAY [Create the VM] ********************* 
@@ -719,4 +719,4 @@ skipping: no hosts matched
 
 PLAY RECAP ********************* 
 ws02                           : ok=4    changed=1    unreachable=0    failed=0
--------------------------
+----
