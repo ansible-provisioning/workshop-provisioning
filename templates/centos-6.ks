@@ -23,7 +23,7 @@ logvol swap --fstype swap --name=lv_swap --vgname=vg_{{ inventory_hostname }}_ro
 
 network --bootproto=static --hostname={{ inventory_hostname }} --ip={{ ip }} --netmask=255.255.255.0 --gateway={{ host_ip }} --nameserver={{ host_ip }}
 
-services --enabled=network,ntpd,ntpdate
+services --enabled=network,ntpd,ntpdate --disabled=sendmail
 
 poweroff
 
