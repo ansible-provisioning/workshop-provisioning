@@ -4,19 +4,19 @@ Ansible Workshop
 Dag Wieers and Jeroen Hoekx
 v0.1, March 2013
 
-= Introduction =
+== Introduction ==
 This workshop will construct a self-replicating virtual machine.
 
 We'll start with a short presentation as an introduction to Ansible.
 
 All content and code can be found at https://github.com/ansible-provisioning/workshop .
 
-== System Requirements ==
+=== System Requirements ===
 All examples assume a Linux system with KVM/Libvirt. The default libvirt network of +192.168.122.0/24+ is assumed to be present.
 
 Using LVM for virtual machine storage works out-of-the-box. File-based disks work, but require small changes in several files.
 
-= Getting Started =
+== Getting Started ==
 The virtual machine has the ip address +192.168.122.21+. The root password is 123456. SSH into it.
 
 We prefer to have a dedicated user to manage our Ansible setup.
@@ -30,7 +30,7 @@ workshop
 bootstrap-hosts  hosts id_rsa.workshop  plays  templates
 -------------------------
 
-== Ad-Hoc Commands ==
+=== Ad-Hoc Commands ===
 The most straightforward usage of Ansible it to run commands on remote hosts. The +ping+ module checks connectivity and correct python setup.
 
 Let's assume our VM is remote and ping it.
@@ -132,7 +132,7 @@ ws01 | success >> {
 
 You can run the previous commands on many machines in parallel. This parallel ssh is already quite powerful. But it's not quite enough to create a self-replicating VM.
 
-= Playbooks =
+== Playbooks ==
 Playbooks are a powerful abstraction of system state. They contain a series of commands (tasks) with a slightly nicer syntax (YAML).
 
 Here's a minimal example that make sure Apache is on all guests.
@@ -177,7 +177,7 @@ Facts gathering is done by the +setup+ module. Run it to see which facts are ava
 ...
 -------------------------
 
-== Templates ==
+=== Templates ===
 
 We can also define variables in a play by using the +vars+ keyword. The next example configures Apache to serve the packages dir.
 
@@ -273,7 +273,7 @@ That's because a playbook models system state. The state we want the system to b
 
 Ansible modules are ideally idempotent. This means you can run them as many times as possible and when your requested state does not change, nothing on the system will change.
 
-== Notify ==
+=== Notify ===
 
 Sometimes we are interested in state change and run actions when that happens. For example, when the package location configuration file for Apache changes, we want to restart Apache.
 
@@ -332,7 +332,7 @@ PLAY RECAP *********************
 ws01                           : ok=5    changed=2    unreachable=0    failed=0
 -------------------------
 
-= Advanced Inventory =
+== Advanced Inventory ==
 
 Playbooks are only marginally useful when you run them on one machine. They become very powerful once you start managing multiple systems.
 
@@ -397,7 +397,7 @@ ws01 | success >> {
 
 There are a lot of selectors you can choose from. The on-line documentation on them is excellent.
 
-= Orchestrate =
+== Orchestrate ==
 
 We can now talk to the host. In order to deploy a virtual machine we first need to allocate storage.
 
@@ -510,7 +510,7 @@ PLAY RECAP *********************
 ws02                           : ok=1    changed=1    unreachable=0    failed=0
 -------------------------
 
-== Conditionals ==
+=== Conditionals ===
 
 Now it's not really useful to have two separate playbooks. We want a way to have both methods in one playbook and choose which one to use depending on the variables that exist.
 
@@ -551,7 +551,7 @@ PLAY RECAP *********************
 ws02                           : ok=1    changed=0    unreachable=0    failed=0
 -------------------------
 
-== Creating Virtual Machines ==
+=== Creating Virtual Machines ===
 
 The next step is to actually create the virtual machine. Libvirt uses an XML description of it. We can just template that to the host and use the +virt_guest+ module to create the VM.
 
