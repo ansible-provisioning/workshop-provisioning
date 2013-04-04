@@ -1,34 +1,7 @@
 ---
 
-- name: Create a Virtual Machine
-  hosts: guests
-  user: root
-
-  ### Can't gather facts from a machine that does not exist
-  gather_facts: false
-
-  tasks:
-### Create a logical volume for storage
-  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
-    delegate_to: ${host}
-    when_unset: ${qemu_img_path}
-  - action: file dest=${qemu_img_path} state=directory
-    delegate_to: ${host}
-    when_set: ${qemu_img_path}
-  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
-    delegate_to: ${host}
-    when_set: ${qemu_img_path}
-
-### Create a virtual machine
-  - action: file dest=/tmp/vm-${inventory_hostname} state=directory
-    delegate_to: ${host}
-  - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
-  - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
-    register: guest
-
-  - local_action: group_by key=${guest.provisioning_status}
+- include: storage.yml
+- include: vm.yml
 
 - name: Install a minimal CentOS
   hosts: unprovisioned

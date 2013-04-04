@@ -77,6 +77,20 @@ Apache will have to serve that directory. Let's install it. The +yum+ module ins
 
 -------------------------
 [ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=httpd state=installed' -i hosts
+ws01 | success >> {
+    "changed": false, 
+    "msg": "", 
+    "rc": 0, 
+    "results": [
+        "httpd-2.2.15-26.el6.centos.x86_64 providing httpd is already installed"
+    ]
+}
+-------------------------
+
+Apache was already installed. Let's install vim.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=installed' -i hosts
 ws01 | FAILED >> {
     "changed": false, 
     "msg": "You need to be root to perform this command.\n", 
@@ -87,27 +101,41 @@ ws01 | FAILED >> {
 }
 -------------------------
 
-We're lucky that we can also access the virtual machine as +root+. The +-u+ switch.
+Try it again, this time as root user:
 
 -------------------------
-[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=httpd state=installed' -i hosts -u root
+[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=installed' -i hosts -u root
 ws01 | success >> {
     "changed": true, 
     "msg": "", 
     "rc": 0, 
     "results": [
-        "\n================================================================================\n Package             Arch         Version                      Repository  Size\n================================================================================\nInstalling:\n httpd               x86_64       2.2.15-26.el6.centos         base       821 k\nInstalling for dependencies:\n apr                 x86_64       1.3.9-5.el6_2                base       123 k\n apr-util            x86_64       1.3.9-3.el6_0.1              base        87 k\n apr-util-ldap       x86_64       1.3.9-3.el6_0.1              base        15 k\n httpd-tools         x86_64       2.2.15-26.el6.centos         base        72 k\n mailcap             noarch       2.1.31-2.el6                 base        27 k\n\nTransaction Summary\n================================================================================\nInstall       6 Package(s)\n\nTotal download size: 1.1 M\nInstalled size: 3.6 M\n\nInstalled:\n  httpd.x86_64 0:2.2.15-26.el6.centos  
-                                         \n\nDependency Installed:\n  apr.x86_64 0:1.3.9-5.el6_2                                                    \n  apr-util.x86_64 0:1.3.9-3.el6_0.1                                             \n  apr-util-ldap.x86_64 0:1.3.9-3.el6_0.1                                        \n  httpd-tools.x86_64 0:2.2.15-26.el6.centos                                     \n  mailcap.noarch 0:2.1.31-2.el6                                                 \n\n"
+        "\n================================================================================\n Package             Arch          Version                  Repository     Size\n================================================================================\nInstalling:\n vim-enhanced        x86_64        2:7.2.411-1.8.el6        centos        892 k\nInstalling for dependencies:\n gpm-libs            x86_64        1.20.6-12.el6            centos         28 k\n vim-common          x86_64        2:7.2.411-1.8.el6        centos        6.0 M\n\nTransaction Summary\n================================================================================\nInstall       3 Package(s)\n\nTotal download size: 6.9 M\nInstalled size: 19 M\n\nInstalled:\n  vim-enhanced.x86_64 2:7.2.411-1.8.el6                                         \n\nDependency Installed:\n  gpm-libs.x86_64 0:1.20.6-12.el6      vim-common.x86_64 2:7.2.411-1.8.el6     \n\n"
     ]
 }
 -------------------------
 
-This parallel ssh is already quite powerful. But it's not quite enough to create a self-replicating VM.
+
+How does uninstalling a package work?
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m yum -a 'pkg=vim-enhanced state=absent' -i hosts -u root
+ws01 | success >> {
+    "changed": true, 
+    "msg": "", 
+    "rc": 0, 
+    "results": [
+        "\n================================================================================\n Package            Arch         Version                    Repository     Size\n================================================================================\nRemoving:\n vim-enhanced       x86_64       2:7.2.411-1.8.el6          @centos       1.8 M\n\nTransaction Summary\n================================================================================\nRemove        1 Package(s)\n\nInstalled size: 1.8 M\n\nRemoved:\n  vim-enhanced.x86_64 2:7.2.411-1.8.el6                                         \n\n"
+    ]
+}
+-------------------------
+
+You can run the previous commands on many machines in parallel. This parallel ssh is already quite powerful. But it's not quite enough to create a self-replicating VM.
 
 = Playbooks =
 Playbooks are a powerful abstraction of system state. They contain a series of commands (tasks) with a slightly nicer syntax (YAML).
 
-Here's a minimal example that installs Apache on all guests.
+Here's a minimal example that make sure Apache is on all guests.
 
 -------------------------
 ---
@@ -123,7 +151,7 @@ Here's a minimal example that installs Apache on all guests.
 
 There are two indentation levels. The outer one is called a play. The inner one is for tasks. Playbooks contain plays and plays contain tasks. A play also defines on which systems the tasks should be run.
 
-In your demo system it's in +plays/01-httpd.yml+.
+Save it as +plays/01-httpd.yml+.
 
 -------------------------
 [ansible@ws01 workshop]$ ansible-playbook plays/01-httpd.yml -i hosts
@@ -141,6 +169,13 @@ ws01                           : ok=2    changed=0    unreachable=0    failed=0
 -------------------------
 
 A play starts with a facts gathering phase. Variables like the operating system version or the mac addres of network interfaces will be available.
+
+Facts gathering is done by the +setup+ module. Run it to see which facts are available.
+
+-------------------------
+[ansible@ws01 workshop]$ ansible ws01 -m setup -i hosts -u root
+...
+-------------------------
 
 == Templates ==
 
@@ -170,7 +205,7 @@ We encounter 2 new Ansible modules here. The +service+ module does what you expe
 
 The template module is more complicated. This allows you to use the variables and facts. A template is processed with jinja2, the same templating code used in the Flask Python web framework.
 
-Our template looks like this:
+Our template (in +templates/etc/http/conf.d/packages.conf+) looks like this:
 
 -------------------------
 Alias /packages {{ package_dir }}
@@ -181,6 +216,8 @@ Alias /packages {{ package_dir }}
   Allow from all
 </Directory>
 -------------------------
+
+Variables can be defined in multiple places. You can add them to the inventory, create special variable files or define them in a play.
 
 Running the playbook results in:
 
@@ -269,7 +306,7 @@ An action to run when the state changes is a handler. This is just a task with a
     action: service name=httpd state=started enabled=yes
 -------------------------
 
-We've added a comment in the configuration file. Let's run playbook +03-httpd.yml+.
+We've added a comment in the configuration file. Let's run that playbook.
 
 -------------------------
 [ansible@ws01 workshop]$ ansible-playbook plays/03-httpd.yml -i hosts

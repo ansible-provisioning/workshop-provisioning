@@ -1,0 +1,24 @@
+---
+
+- name: Create the VM
+  hosts: guests
+  user: root
+  gather_facts: false
+
+  tasks:
+
+  - name: VM template folder
+    action: file dest=/tmp/vm-${inventory_hostname} state=directory
+    delegate_to: ${host}
+
+  - name: Prepare VM configuration
+    action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+
+  - name: Create the VM
+    action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
+    delegate_to: ${host}
+    register: guest
+
+  - name: Detect new systems
+    local_action: group_by key=${guest.provisioning_status}
