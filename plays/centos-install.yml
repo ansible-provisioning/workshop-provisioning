@@ -5,62 +5,57 @@
 
 - name: Install a minimal CentOS
   hosts: unprovisioned
-  gather_facts: false
+  gather_facts: no
   user: root
-  vars:
-    kernel: ${packages_path}
+
   tasks:
 ### Prepare a kickstart file
   - action: file dest=${packages_path}/ks state=directory
-    delegate_to: ${command_host}
+    delegate_to: ${master}
+
   - action: template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks
-    delegate_to: ${command_host}
+    delegate_to: ${master}
 
   - name: Copy kernel and initrd to host
-    action: get_url url=${packages_url}/tree/images/pxeboot/$item dest=/tmp/vm-${inventory_hostname}/$item
+    action: get_url url=${packages_url}/minimal/isolinux/$item dest=/tmp/vm-${inventory_hostname}/$item
+    delegate_to: ${hypervisor}
     with_items:
     - vmlinuz
     - initrd.img
-    delegate_to: ${host}
 
 ### Boot the VM using the ISO image
   - action: virt_boot guest=${inventory_hostname} kernel=/tmp/vm-${inventory_hostname}/vmlinuz initrd=/tmp/vm-${inventory_hostname}/initrd.img cmdline="linux sshd ksdevice=eth0 ip=${ip} netmask=255.255.255.0 gateway=192.168.122.1 ks=${packages_url}/ks/${inventory_hostname}.ks"
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
 
 ### Wait for kickstart to finish
-  - action: wait_for host=${ip} port=22 state=started
-    delegate_to: ${command_host}
-
-  - action: wait_for host=${ip} port=22 state=stopped timeout=3600
-    delegate_to: ${command_host}
-
-  - local_action: pause seconds=60
+  - local_action: wait_for host=${ip} port=22 state=started
+  - local_action: wait_for host=${ip} port=22 state=stopped timeout=300
+  - local_action: pause seconds=15
 
 - name: Start the Virtual Machines
   hosts: guests
   user: root
 
   ### Can't gather facts from a machine that does not exist
-  gather_facts: false
+  gather_facts: no
 
   tasks:
   - action: virt_boot guest=${inventory_hostname} boot=hd
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
     tags:
     - post_install
 
-  - action: wait_for host=${ip} port=22 state=started
-    delegate_to: ${command_host}
+  - local_action: wait_for host=${ip} port=22 state=started
     tags:
     - post_install
 
   - action: lineinfile dest=/etc/hosts regexp=" ${inventory_hostname}$" line="${ip} ${inventory_hostname}"
-    delegate_to: ${command_host}
+    delegate_to: ${master}
     tags:
     - post_install
 
   - name: Configure yum on the newly provisioned machine
-    action: template src=../templates/etc/yum.repos.d/ws.repo dest=/etc/yum.repos.d/ws.repo
+    action: template src=../templates/etc/yum.repos.d/workshop.repo dest=/etc/yum.repos.d/workshop.repo
     tags:
     - post_install
 
@@ -68,8 +63,6 @@
     action: file dest=/etc/yum.repos.d/$item state=absent
     with_items:
     - CentOS-Base.repo
-    - CentOS-Debuginfo.repo
-    - CentOS-Media.repo
     - CentOS-Vault.repo
     - epel.repo
     - epel-testing.repo

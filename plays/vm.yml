@@ -3,21 +3,20 @@
 - name: Create the VM
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
 
   tasks:
-
   - name: VM template folder
     action: file dest=/tmp/vm-${inventory_hostname} state=directory
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
 
   - name: Prepare VM configuration
     action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
 
   - name: Create the VM
     action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
     register: guest
 
   - name: Detect new systems

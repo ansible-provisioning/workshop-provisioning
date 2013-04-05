@@ -17,7 +17,7 @@ All examples assume a Linux system with KVM/Libvirt. The default libvirt network
 Using LVM for virtual machine storage works out-of-the-box. File-based disks work, but require small changes in several files.
 
 == Getting Started ==
-The virtual machine has the ip address +192.168.122.21+. The root password is 123456. SSH into it.
+The virtual machine has the ip address +192.168.122.21+. The root password is root. SSH into it.
 
 We prefer to have a dedicated user to manage our Ansible setup.
 
@@ -143,8 +143,8 @@ Here's a minimal example that make sure Apache is on all guests.
 - name: Configure the web server
   hosts: guests
   user: root
-  tasks:
 
+  tasks:
   - name: Install Apache
     action: yum pkg=httpd state=installed
 ----
@@ -187,10 +187,11 @@ We can also define variables in a play by using the +vars+ keyword. The next exa
 - name: Configure the web server
   hosts: guests
   user: root
-  vars:
-    package_dir: /srv/http/packages
-  tasks:
 
+  vars:
+    packages_path: /srv/http/packages
+
+  tasks:
   - name: Install Apache
     action: yum pkg=httpd state=installed
 
@@ -208,9 +209,9 @@ The template module is more complicated. This allows you to use the variables an
 Our template (in +templates/etc/http/conf.d/packages.conf+) looks like this:
 
 ----
-Alias /packages {{ package_dir }}
+Alias /packages {{ packages_path }}
 
-<Directory {{ package_dir }}>
+<Directory {{ packages_path }}>
   Options +Indexes
   Order allow,deny
   Allow from all
@@ -285,15 +286,15 @@ An action to run when the state changes is a handler. This is just a task with a
 - name: Configure the web server
   hosts: guests
   user: root
+
   vars:
-    package_dir: /srv/http/packages
+    packages_path: /srv/http/packages
 
   handlers:
   - name: Restart Apache
     action: service name=httpd state=restarted
 
   tasks:
-
   - name: Install Apache
     action: yum pkg=httpd state=installed
 
@@ -399,7 +400,7 @@ There are a lot of selectors you can choose from. The on-line documentation on t
 
 == Orchestrate ==
 
-We can now talk to the host. In order to deploy a virtual machine we first need to allocate storage.
+We can now talk to the hypervisor. In order to deploy a virtual machine we first need to allocate storage.
 
 Using libvirt you have two options:
 
@@ -410,7 +411,7 @@ In production environments the LVM based approach is better, but for testing the
 
 There are Ansible modules for both.
 
-If you decide to go the LVM way you use the lvol module. There is one concept we have to introduce here. That's delegation of tasks. What we want to do is to create storage for the guest, but we want to do it on the host.
+If you decide to go the LVM way you use the lvol module. There is one concept we have to introduce here. That's delegation of tasks. What we want to do is to create storage for the guest, but we want to do it on the hypervisor.
 
 The playbook looks like this:
 
@@ -420,14 +421,14 @@ The playbook looks like this:
 - name: Allocate VM storage
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
 
   tasks:
   - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
 ----
 
-You can see a few variables in here. They have to be defined in the inventory file. The +storage+ variable defines the volume group. The +host+ variable sets the host the storage has to be created on. The +inventory_hostname+ variable is Ansible magic. It's set to the name of the system in your inventory file.
+You can see a few variables in here. They have to be defined in the inventory file. The +storage+ variable defines the volume group. The +hypervisor+ variable sets the system the storage has to be created on. The +inventory_hostname+ variable is Ansible magic. It's set to the name of the system in your inventory file.
 
 All variables are subsituted for every system in the selector. So they don't need to have the same values.
 
@@ -440,7 +441,7 @@ ws01
 ws02
 
 [guests:vars]
-host=192.168.122.1
+hypervisor=192.168.122.1
 storage=firefly
 
 [hosts]
@@ -473,27 +474,26 @@ If you use qemu storage, the playbook would be similar.
 - name: Allocate VM storage
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
 
   tasks:
-  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
-    delegate_to: ${host}
+  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=3072 format=qcow2
+    delegate_to: ${hypervisor}
 ----
 
 In this case we would need to define the +qemu_img_path+ variable in the inventory.
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
+hypervisor ip=192.168.122.1
+
 [guests]
 ws01
 ws02
 
 [guests:vars]
-host=192.168.122.1
+hypervisor=192.168.122.1
 qemu_img_path=/var/lib/libvirt/images
-
-[hosts]
-192.168.122.1
 ----
 
 And run the playbook:
@@ -503,7 +503,7 @@ And run the playbook:
 
 PLAY [Allocate VM storage] ********************* 
 
-TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2] ********************* 
+TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=3072 format=qcow2] ********************* 
 changed: [ws02]
 
 PLAY RECAP ********************* 
@@ -522,15 +522,15 @@ Ansible has conditionals that allow you to do just that:
 - name: Allocate VM storage
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
 
   tasks:
-  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
-    delegate_to: ${host}
+  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=3072
+    delegate_to: ${hypervisor}
     when_set: ${storage}
 
-  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
-    delegate_to: ${host}
+  - action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=3072 format=qcow2
+    delegate_to: ${hypervisor}
     when_set: ${qemu_img_path}
 ----
 
@@ -561,14 +561,17 @@ The next step is to actually create the virtual machine. Libvirt uses an XML des
 - name: Create the VM
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
+
   tasks:
   - action: file dest=/tmp/vm-${inventory_hostname} state=directory
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
 ----
 
 We'll run this with verbose output:
@@ -601,14 +604,17 @@ In the next provisioning steps we don't want to reprovision an existing system. 
 - name: Create the VM
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
+
   tasks:
   - action: file dest=/tmp/vm-${inventory_hostname} state=directory
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
     register: guest
 
   - local_action: group_by key=${guest.provisioning_status}
@@ -624,47 +630,49 @@ To use the new group, we add a second play to the playbook. This will create a k
 - name: Create the VM
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
+
   tasks:
   - action: file dest=/tmp/vm-${inventory_hostname} state=directory
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: template src=../templates/vm.xml dest=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
+
   - action: virt_guest guest=${inventory_hostname} src=/tmp/vm-${inventory_hostname}/vm.xml
-    delegate_to: ${host}
+    delegate_to: ${hypervisor}
     register: guest
 
   - local_action: group_by key=${guest.provisioning_status}
 
 - name: Install a minimal CentOS
   hosts: unprovisioned
-  gather_facts: false
+  gather_facts: no
   user: root
+
   tasks:
-### Prepare a kickstart file
-  - action: file dest=${packages_path}/ks state=directory
-    delegate_to: ${command_host}
-  - action: template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks
-    delegate_to: ${command_host}
+  ### Prepare a kickstart file
+  - local_action: file dest=${packages_path}/ks state=directory
+
+  - local_action: template src=../templates/centos-6.ks dest=${packages_path}/ks/${inventory_hostname}.ks
 ----
 
 We need to define a few more variables:
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
+hypervisor ip=192.168.122.1
+
 [guests]
 ws01
 ws02
 
 [guests:vars]
-host=192.168.122.1
+hypervisor=192.168.122.1
+master=ws01
 qemu_img_path=/var/lib/libvirt/images
-command_host=ws01
 packages_path=/srv/http/packages
-packages_url=http://192.168.122.21/packages
-
-[hosts]
-192.168.122.1
+packages_url=http://${master}/packages
 ----
 
 Let's run it twice:

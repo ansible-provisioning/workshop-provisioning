@@ -1,7 +1,7 @@
 ### Mount the rpm package directory
-Alias /packages {{ package_dir }}
+Alias /packages {{ packages_path }}
 
-<Directory {{ package_dir }}>
+<Directory {{ packages_path }}>
   Options +Indexes
   Order allow,deny
   Allow from all

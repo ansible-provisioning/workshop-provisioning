@@ -1,14 +1,12 @@
-[hosts]
-firefly ansible_python_interpreter=/usr/bin/python2
+hypervisor ip=192.168.122.1 ansible_python_interpreter=/usr/bin/python2
 
 [guests]
 ws01 ip=192.168.122.21
 ws02 ip=192.168.122.22
 
 [guests:vars]
-command_host=ws01
-host=firefly
-host_ip=192.168.122.1
-storage=firefly
+master=192.168.122.21
+hypervisor=192.168.122.1
+qemu_img_path=/var/lib/libvirt/images
 packages_path=/srv/http/packages
-packages_url=http://192.168.122.21/packages
+packages_url=http://${master}/packages

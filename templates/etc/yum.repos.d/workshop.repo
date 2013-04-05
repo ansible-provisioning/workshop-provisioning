@@ -1,0 +1,26 @@
+[minimal]
+name=CentOS minimal
+baseurl={{ packages_url }}/minimal
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+
+[base]
+name=CentOS base
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=os
+enabled=0
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+
+[updates]
+name=CentOS updates
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=updates
+enabled=0
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+
+[workshop]
+name=Ansible workshop
+baseurl={{ packages_url }}/workshop
+enabled=1
+gpgcheck=0

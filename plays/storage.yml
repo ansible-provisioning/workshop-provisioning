@@ -3,15 +3,15 @@
 - name: Allocate VM storage
   hosts: guests
   user: root
-  gather_facts: false
+  gather_facts: no
 
   tasks:
   - name: Allocate storage on LVM
-    action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
-    delegate_to: ${host}
+    action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=3072
+    delegate_to: ${hypervisor}
     when_set: ${storage}
 
   - name: Allocate storage in the filesystem
-    action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2
-    delegate_to: ${host}
+    action: qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=3072 format=qcow2
+    delegate_to: ${hypervisor}
     when_set: ${qemu_img_path}
