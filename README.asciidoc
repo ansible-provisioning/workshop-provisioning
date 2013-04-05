@@ -424,7 +424,7 @@ The playbook looks like this:
   gather_facts: no
 
   tasks:
-  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240
+  - action: lvol vg=${storage} lv=lv_${inventory_hostname}_root size=3072
     delegate_to: ${hypervisor}
 ----
 
@@ -457,7 +457,7 @@ We can run it:
 
 PLAY [Allocate VM storage] ********************* 
 
-TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240] ********************* 
+TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=3072] ********************* 
 changed: [ws02]
 
 PLAY RECAP ********************* 
@@ -541,10 +541,10 @@ ansible@ws01 workshop]$ ansible-playbook plays/storage.yml --limit=ws02 -i hosts
 
 PLAY [Allocate VM storage] ********************* 
 
-TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=10240] ********************* 
+TASK: [lvol vg=${storage} lv=lv_${inventory_hostname}_root size=3072] ********************* 
 skipping: [ws02]
 
-TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=10240 format=qcow2] ********************* 
+TASK: [qemu_img dest=${qemu_img_path}/${inventory_hostname}.img size=3072 format=qcow2] ********************* 
 ok: [ws02]
 
 PLAY RECAP ********************* 
