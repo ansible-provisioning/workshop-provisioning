@@ -28,7 +28,8 @@
     action: file dest=${packages_path}/minimal state=directory
 
   - name: Copy CentOS minimal ISO image
-    action: copy src=${centos_image} dest=${centos_image}
+#    action: copy src=${centos_image} dest=${centos_image}
+    local_action: command rsync -a --inplace --rsh='ssh -o StrictHostKeyChecking=no' ${centos_image} root@${inventory_hostname}:${centos_image}
 
   - name: Loopback mount the image
     action: mount name=${packages_path}/minimal src=${centos_image} opts=ro,loop fstype=iso9660 state=mounted

@@ -44,6 +44,7 @@ man-pages
 openssh-clients
 openssh-server
 postfix
+rsync
 vixie-cron
 which
 yum
