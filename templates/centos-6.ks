@@ -2,7 +2,7 @@ network --bootproto=static --hostname={{ inventory_hostname }} --ip={{ ip }} --n
 url --url {{ packages_url }}/minimal
 repo --name=workshop --baseurl {{ packages_url }}/workshop
 
-services --enabled=network,postfix,rsyslog --disabled=iptables,iptables-ipv6,rawdevices
+services --enabled=network,postfix,rsyslog --disabled=iptables,iptables-ipv6,sendmail
 
 install
 text
@@ -43,7 +43,6 @@ man
 man-pages
 openssh-clients
 openssh-server
-postfix
 rsync
 vixie-cron
 which
