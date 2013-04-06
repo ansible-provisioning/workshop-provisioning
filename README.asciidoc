@@ -671,7 +671,7 @@ ws02 ip=192.168.122.22
 
 [guests:vars]
 hypervisor=192.168.122.1
-master=ws01
+master=192.168.122.21
 qemu_img_path=/var/lib/libvirt/images
 packages_path=/srv/http/packages
 packages_url=http://${master}/packages
