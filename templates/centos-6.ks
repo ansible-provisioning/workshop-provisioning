@@ -1,4 +1,4 @@
-network --bootproto=static --hostname={{ inventory_hostname }} --ip={{ ip }} --netmask=255.255.255.0 --gateway={{ host_ip }} --nameserver={{ host_ip }}
+network --bootproto=static --hostname={{ inventory_hostname }} --ip={{ ip }} --netmask=255.255.255.0 --gateway={{ hypervisor }} --nameserver={{ hypervisor }}
 url --url {{ packages_url }}/minimal
 repo --name=workshop --baseurl {{ packages_url }}/workshop
 
