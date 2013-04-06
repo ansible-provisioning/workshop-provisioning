@@ -2,7 +2,7 @@ Ansible Workshop
 ================
 
 Dag Wieers and Jeroen Hoekx
-v0.1, March 2013
+v0.2, April 2013
 
 == Introduction ==
 This workshop will construct a self-replicating virtual machine.
@@ -348,11 +348,11 @@ Let's add the virtual machine host to it:
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
-[guests]
-ws01
-
 [hosts]
 192.168.122.1
+
+[guests]
+ws01
 ----
 
 Ansible uses SSH to talk to systems. The recommended way to login is to use public key authentication.
@@ -436,6 +436,9 @@ Let's add the second VM we want to provision and define the variables:
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
+[hosts]
+192.168.122.1
+
 [guests]
 ws01
 ws02
@@ -443,9 +446,6 @@ ws02
 [guests:vars]
 hypervisor=192.168.122.1
 storage=firefly
-
-[hosts]
-192.168.122.1
 ----
 
 This introduces group variables for the 'guests' group.
@@ -485,7 +485,8 @@ In this case we would need to define the +qemu_img_path+ variable in the invento
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
-hypervisor ip=192.168.122.1
+[hosts]
+192.168.122.1
 
 [guests]
 ws01
@@ -661,11 +662,12 @@ We need to define a few more variables:
 
 ----
 [ansible@ws01 workshop]$ cat hosts 
-hypervisor ip=192.168.122.1
+[hosts]
+192.168.122.1
 
 [guests]
-ws01
-ws02
+ws01 ip=192.168.122.21
+ws02 ip=192.168.122.22
 
 [guests:vars]
 hypervisor=192.168.122.1
